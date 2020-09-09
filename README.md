@@ -21,6 +21,11 @@
   <br>
 </div>
 
+# Quickstart
+
+1) Start the server with the command `pomod`;
+2) Query the server state and start pomodoro timers with
+
 <div>
   <small>
     Logo made by <a href="https://www.flaticon.com/authors/roundicons" title="Roundicons">Roundicons</a> from <a href="https://www.flaticon.com/" title="Flaticon"> www.flaticon.com</a>.

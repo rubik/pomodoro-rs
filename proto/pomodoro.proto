@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package pomodoro;
+
+service Session {
+  rpc GetState (GetStateRequest) returns (GetStateResponse);
+  rpc Start (StartRequest) returns (StartResponse);
+  rpc Stop (StopRequest) returns (StopResponse);
+}
+
+message GetStateRequest {}
+message GetStateResponse {
+  enum State {
+    WORKING = 0;
+    BREAK = 1;
+    STOPPED = 2;
+  }
+  State state = 1;
+  float time_remaining = 2;
+}
+
+message StartRequest {
+  uint32 num = 1;
+  uint32 work_time = 2;
+  uint32 short_break_time = 3;
+  uint32 long_break_time = 4;
+}
+message StartResponse {}
+
+message StopRequest {}
+message StopResponse {}
