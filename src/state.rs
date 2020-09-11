@@ -17,6 +17,11 @@ pub enum PomodoroPhase {
     LongBreak,
 }
 
+pub enum TransitionResult {
+    Stopped,
+    NextTransitionIn(u32),
+}
+
 #[derive(Clone)]
 pub enum RemainingPeriods {
     Unlimited,
@@ -28,6 +33,20 @@ impl RemainingPeriods {
         match self {
             Self::Unlimited => default,
             Self::N(n) => n,
+        }
+    }
+
+    pub fn decrement(&mut self) {
+        if let Self::N(ref mut n) = self {
+            *n = *n - 1;
+        }
+    }
+
+    pub fn done(&self) -> bool {
+        match self {
+            Self::Unlimited => false,
+            Self::N(0) => true,
+            Self::N(_) => false,
         }
     }
 }
@@ -93,7 +112,41 @@ impl PomodoroState {
         self.params = params;
     }
 
-    pub fn transition(&mut self) {}
+    pub fn transition(&mut self) -> TransitionResult {
+        if self.phase == PomodoroPhase::ShortBreak {
+            self.short_breaks_done += 1;
+        } else if self.phase == PomodoroPhase::Working {
+            self.params.periods.decrement();
+            if self.params.periods.done() {
+                self.stop();
+                return TransitionResult::Stopped;
+            }
+        }
+        self.phase = match self.phase {
+            PomodoroPhase::Stopped => PomodoroPhase::Stopped,
+            PomodoroPhase::ShortBreak => PomodoroPhase::Working,
+            PomodoroPhase::LongBreak => PomodoroPhase::Working,
+            PomodoroPhase::Working => {
+                if self.short_breaks_done
+                    == self.params.short_breaks_before_long
+                {
+                    PomodoroPhase::LongBreak
+                } else {
+                    PomodoroPhase::ShortBreak
+                }
+            }
+        };
+        let s = match self.phase {
+            PomodoroPhase::Stopped => {
+                self.stop();
+                return TransitionResult::Stopped;
+            }
+            PomodoroPhase::Working => self.params.work_len,
+            PomodoroPhase::ShortBreak => self.params.short_break_len,
+            PomodoroPhase::LongBreak => self.params.long_break_len,
+        };
+        TransitionResult::NextTransitionIn(s)
+    }
 
     pub fn stop(&mut self) {
         self.phase = PomodoroPhase::Stopped;
