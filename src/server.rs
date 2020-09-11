@@ -6,6 +6,7 @@ use crate::state::{
     PomodoroPhase, PomodoroSession, PomodoroState, RemainingPeriods,
     ONE_MINUTE,
 };
+use crate::clock::PomodoroClock;
 use pomodoro::session_server::{Session, SessionServer};
 use pomodoro::{
     get_state_response::{Phase, Remaining},
@@ -71,6 +72,7 @@ impl From<RemainingPeriods> for i32 {
 pub struct PomodoroService {
     conf: Config,
     state: Arc<Mutex<PomodoroState>>,
+    clock: Option<PomodoroClock>,
 }
 
 impl PomodoroService {
@@ -78,6 +80,7 @@ impl PomodoroService {
         Self {
             conf,
             state: Arc::new(Mutex::new(PomodoroState::default())),
+            clock: None,
         }
     }
 }
@@ -117,6 +120,7 @@ impl Session for PomodoroService {
             },
         };
         self.state.lock().unwrap().start(session);
+        self.clock = PomodoroClock::new(self.state.clone());
         // create timed task
         Ok(Response::new(StartResponse::default()))
     }
