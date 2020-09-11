@@ -190,7 +190,7 @@ impl PomodoroState {
                 PomodoroPhase::LongBreak => self.params.long_break_len,
                 PomodoroPhase::Stopped => return 0,
             } as u64;
-            // XXX: this can overflow if the phase time is changed, in theory
+            // XXX: this can overflow if the phase time is changed
             phase_time - elapsed
         })
     }

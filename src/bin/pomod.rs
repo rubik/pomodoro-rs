@@ -1,6 +1,5 @@
 use std::process;
 use structopt::StructOpt;
-use tokio;
 
 use pomodoro_rs::server::{run, Config};
 

@@ -2,11 +2,11 @@ use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 use tonic::{transport::Server, Request, Response, Status};
 
+use crate::clock::PomodoroClock;
 use crate::state::{
     PomodoroPhase, PomodoroSession, PomodoroState, RemainingPeriods,
     ONE_MINUTE,
 };
-use crate::clock::PomodoroClock;
 use pomodoro::session_server::{Session, SessionServer};
 use pomodoro::{
     get_state_response::{Phase, Remaining},
@@ -72,15 +72,16 @@ impl From<RemainingPeriods> for i32 {
 pub struct PomodoroService {
     conf: Config,
     state: Arc<Mutex<PomodoroState>>,
-    clock: Option<PomodoroClock>,
+    clock: Arc<Mutex<PomodoroClock>>,
 }
 
 impl PomodoroService {
     pub fn new(conf: Config) -> Self {
+        let state = Arc::new(Mutex::new(PomodoroState::default()));
         Self {
             conf,
-            state: Arc::new(Mutex::new(PomodoroState::default())),
-            clock: None,
+            state: state.clone(),
+            clock: Arc::new(Mutex::new(PomodoroClock::new(state))),
         }
     }
 }
@@ -119,15 +120,15 @@ impl Session for PomodoroService {
                 n => n,
             },
         };
+        self.clock.lock().unwrap().start(session.work_len.into());
         self.state.lock().unwrap().start(session);
-        self.clock = PomodoroClock::new(self.state.clone());
-        // create timed task
         Ok(Response::new(StartResponse::default()))
     }
     async fn stop(
         &self,
         request: Request<StopRequest>,
     ) -> Result<Response<StopResponse>, Status> {
+        self.clock.lock().unwrap().stop();
         self.state.lock().unwrap().stop();
         Ok(Response::new(StopResponse::default()))
     }
