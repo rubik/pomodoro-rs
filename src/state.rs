@@ -1,5 +1,6 @@
 use std::time::SystemTime;
 
+/// Number of seconds in a minute.
 pub const ONE_MINUTE: u32 = 60;
 
 fn seconds_since(t: SystemTime) -> u64 {
@@ -9,26 +10,41 @@ fn seconds_since(t: SystemTime) -> u64 {
         .as_secs()
 }
 
+/// All the possible phases that a pomodoro session might be in.
 #[derive(Copy, Clone, PartialEq)]
 pub enum PomodoroPhase {
+    /// The session ended.
     Stopped,
+    /// The session is currently in a work period.
     Working,
+    /// The session is currently in a short break.
     ShortBreak,
+    /// The session is currently in a long break.
     LongBreak,
 }
 
+/// The result of a state transition. It signals whether the session is
+/// concluded or there are periods left.
 pub enum TransitionResult {
+    /// The session ended.
     Stopped,
+    /// The session continues, and the next transition happens in the specified
+    /// number of seconds.
     NextTransitionIn(u32),
 }
 
+/// How many periods remain in a pomodoro session.
 #[derive(Clone)]
 pub enum RemainingPeriods {
+    /// The session does not have limits.
     Unlimited,
+    /// The session ends after the specified number of work periods.
     N(u32),
 }
 
 impl RemainingPeriods {
+    /// Consume the enum to get the number of work periods remaining (if the
+    /// session is limited), or the default value.
     pub fn unwrap_or(self, default: u32) -> u32 {
         match self {
             Self::Unlimited => default,
@@ -36,12 +52,14 @@ impl RemainingPeriods {
         }
     }
 
+    /// Decrement the number of work periods left by one.
     pub fn decrement(&mut self) {
         if let Self::N(ref mut n) = self {
-            *n = *n - 1;
+            *n -= 1;
         }
     }
 
+    /// Whether the pomodoro session is complete.
     pub fn done(&self) -> bool {
         match self {
             Self::Unlimited => false,
@@ -77,6 +95,7 @@ impl Default for PomodoroSession {
     }
 }
 
+/// The global state of the pomodoro process.
 pub struct PomodoroState {
     /// The phase in which the pomodoro timer is in.
     pub phase: PomodoroPhase,
@@ -104,6 +123,7 @@ impl Default for PomodoroState {
 }
 
 impl PomodoroState {
+    /// Start the pomodoro session, with the provided session parameters.
     pub fn start(&mut self, params: PomodoroSession) {
         self.phase = PomodoroPhase::Working;
         self.current_len = Some(params.work_len);
@@ -112,6 +132,8 @@ impl PomodoroState {
         self.params = params;
     }
 
+    /// Transition to the next period in the session. If the session ends,
+    /// `PomodoroState::stop()` is automatically called.
     pub fn transition(&mut self) -> TransitionResult {
         if self.phase == PomodoroPhase::ShortBreak {
             self.short_breaks_done += 1;
@@ -148,6 +170,7 @@ impl PomodoroState {
         TransitionResult::NextTransitionIn(s)
     }
 
+    /// Stop the pomodoro session. The inner state is reset.
     pub fn stop(&mut self) {
         self.phase = PomodoroPhase::Stopped;
         self.params = PomodoroSession::default();
@@ -156,6 +179,8 @@ impl PomodoroState {
         self.short_breaks_done = 0;
     }
 
+    /// Retrieve the number of seconds remaining in the current period, if there
+    /// is a session going on.
     pub fn get_time_remaining(&self) -> Option<u64> {
         self.current_started_at.map(|s| {
             let elapsed = seconds_since(s);
