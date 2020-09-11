@@ -10,20 +10,28 @@ service Session {
 
 message GetStateRequest {}
 message GetStateResponse {
-  enum State {
-    WORKING = 0;
-    BREAK = 1;
-    STOPPED = 2;
+  enum Phase {
+    STOPPED = 0;
+    WORKING = 1;
+    SHORT_BREAK = 2;
+    LONG_BREAK = 3;
   }
-  State state = 1;
-  float time_remaining = 2;
+  enum Remaining {
+    UNLIMITED = 0;
+    LIMITED = 1;
+  }
+  Phase phase = 1;
+  uint64 time_remaining = 2;
+  Remaining remaining_periods = 3;
+  uint32 periods = 4;
 }
 
 message StartRequest {
-  uint32 num = 1;
+  uint32 periods = 1;
   uint32 work_time = 2;
   uint32 short_break_time = 3;
   uint32 long_break_time = 4;
+  uint32 short_breaks_before_long = 5;
 }
 message StartResponse {}
 
