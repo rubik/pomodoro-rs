@@ -11,7 +11,7 @@ fn seconds_since(t: SystemTime) -> u64 {
 }
 
 /// All the possible phases that a pomodoro session might be in.
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum PomodoroPhase {
     /// The session ended.
     Stopped,
@@ -25,6 +25,7 @@ pub enum PomodoroPhase {
 
 /// The result of a state transition. It signals whether the session is
 /// concluded or there are periods left.
+#[derive(Debug)]
 pub enum TransitionResult {
     /// The session ended.
     Stopped,
@@ -34,7 +35,7 @@ pub enum TransitionResult {
 }
 
 /// How many periods remain in a pomodoro session.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum RemainingPeriods {
     /// The session does not have limits.
     Unlimited,
@@ -152,6 +153,7 @@ impl PomodoroState {
                 if self.short_breaks_done
                     == self.params.short_breaks_before_long
                 {
+                    self.short_breaks_done = 0;
                     PomodoroPhase::LongBreak
                 } else {
                     PomodoroPhase::ShortBreak
@@ -167,6 +169,7 @@ impl PomodoroState {
             PomodoroPhase::ShortBreak => self.params.short_break_len,
             PomodoroPhase::LongBreak => self.params.long_break_len,
         };
+        self.current_started_at = Some(SystemTime::now());
         TransitionResult::NextTransitionIn(s)
     }
 
@@ -190,7 +193,6 @@ impl PomodoroState {
                 PomodoroPhase::LongBreak => self.params.long_break_len,
                 PomodoroPhase::Stopped => return 0,
             } as u64;
-            // XXX: this can overflow if the phase time is changed
             phase_time - elapsed
         })
     }
