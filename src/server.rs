@@ -2,11 +2,12 @@ use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 use tonic::{transport::Server, Request, Response, Status};
 
-use crate::clock::PomodoroClock;
-use crate::state::{
+use pomolib::clock::PomodoroClock;
+use pomolib::state::{
     PomodoroPhase, PomodoroSession, PomodoroState, RemainingPeriods,
     ONE_MINUTE,
 };
+
 use pomodoro::session_server::{Session, SessionServer};
 use pomodoro::{
     get_state_response::{Phase, Remaining},
@@ -45,28 +46,6 @@ pub async fn run(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
-}
-
-impl From<PomodoroPhase> for i32 {
-    fn from(phase: PomodoroPhase) -> i32 {
-        match phase {
-            PomodoroPhase::Stopped => Phase::Stopped,
-            PomodoroPhase::Working => Phase::Working,
-            PomodoroPhase::ShortBreak => Phase::ShortBreak,
-            PomodoroPhase::LongBreak => Phase::LongBreak,
-        }
-        .into()
-    }
-}
-
-impl From<RemainingPeriods> for i32 {
-    fn from(phase: RemainingPeriods) -> i32 {
-        match phase {
-            RemainingPeriods::Unlimited => Remaining::Unlimited,
-            RemainingPeriods::N(_) => Remaining::Limited,
-        }
-        .into()
-    }
 }
 
 pub struct PomodoroService {
@@ -126,7 +105,7 @@ impl Session for PomodoroService {
     }
     async fn stop(
         &self,
-        request: Request<StopRequest>,
+        _request: Request<StopRequest>,
     ) -> Result<Response<StopResponse>, Status> {
         self.clock.lock().unwrap().stop();
         self.state.lock().unwrap().stop();
@@ -134,15 +113,33 @@ impl Session for PomodoroService {
     }
     async fn get_state(
         &self,
-        request: Request<GetStateRequest>,
+        _request: Request<GetStateRequest>,
     ) -> Result<Response<GetStateResponse>, Status> {
         let state = self.state.lock().unwrap();
         let state_response = GetStateResponse {
-            phase: state.phase.into(),
+            phase: phase_to_i32(state.phase),
             time_remaining: state.get_time_remaining().unwrap_or(0),
-            remaining_periods: state.params.periods.clone().into(),
+            remaining_periods: rem_to_i32(state.params.periods.clone()),
             periods: state.params.periods.clone().unwrap_or(0),
         };
         Ok(Response::new(state_response))
     }
+}
+
+fn phase_to_i32(phase: PomodoroPhase) -> i32 {
+    match phase {
+        PomodoroPhase::Stopped => Phase::Stopped,
+        PomodoroPhase::Working => Phase::Working,
+        PomodoroPhase::ShortBreak => Phase::ShortBreak,
+        PomodoroPhase::LongBreak => Phase::LongBreak,
+    }
+    .into()
+}
+
+fn rem_to_i32(rem: RemainingPeriods) -> i32 {
+    match rem {
+        RemainingPeriods::Unlimited => Remaining::Unlimited,
+        RemainingPeriods::N(_) => Remaining::Limited,
+    }
+    .into()
 }

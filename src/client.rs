@@ -112,15 +112,15 @@ async fn stop(
 
 fn print_state(response: GetStateResponse) {
     let (state, remaining) = match Phase::from_i32(response.phase) {
-        Some(Phase::Stopped) => ("🍅".red().bold(), None),
+        Some(Phase::Stopped) => ("⭕".red().bold(), None),
         Some(Phase::Working) => {
-            ("🍅".yellow().bold(), Some(response.time_remaining))
+            ("⭕".yellow().bold(), Some(response.time_remaining))
         }
         Some(Phase::ShortBreak) => {
-            ("🍅".blue().bold(), Some(response.time_remaining))
+            ("⭕".blue().bold(), Some(response.time_remaining))
         }
         Some(Phase::LongBreak) => {
-            ("🍅".green().bold(), Some(response.time_remaining))
+            ("⭕".green().bold(), Some(response.time_remaining))
         }
         None => ("".into(), None),
     };
