@@ -1,4 +1,3 @@
-use colored::*;
 use structopt::StructOpt;
 use tonic::{transport::Channel, Request, Response};
 
@@ -112,22 +111,16 @@ async fn stop(
 
 fn print_state(response: GetStateResponse) {
     let (state, remaining) = match Phase::from_i32(response.phase) {
-        Some(Phase::Stopped) => ("⭕".red().bold(), None),
-        Some(Phase::Working) => {
-            ("⭕".yellow().bold(), Some(response.time_remaining))
-        }
-        Some(Phase::ShortBreak) => {
-            ("⭕".blue().bold(), Some(response.time_remaining))
-        }
-        Some(Phase::LongBreak) => {
-            ("⭕".green().bold(), Some(response.time_remaining))
-        }
+        Some(Phase::Stopped) => ("stopped", None),
+        Some(Phase::Working) => ("working", Some(response.time_remaining)),
+        Some(Phase::ShortBreak) => ("short-break", Some(response.time_remaining)),
+        Some(Phase::LongBreak) => ("long-break", Some(response.time_remaining)),
         None => ("".into(), None),
     };
     let remaining = remaining
         .map(readable_remaining)
         .unwrap_or_else(String::new);
-    println!("{}{}", state, remaining);
+    println!("{} {}", state, remaining);
 }
 
 fn readable_remaining(time: u64) -> String {
