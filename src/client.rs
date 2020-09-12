@@ -1,15 +1,16 @@
+use colored::*;
+use structopt::StructOpt;
+use tonic::{transport::Channel, Request, Response};
+
 use pomodoro::session_client::SessionClient;
 use pomodoro::{
-    get_state_response::{Phase, Remaining},
-    GetStateRequest, GetStateResponse, StartRequest, StartResponse,
-    StopRequest, StopResponse,
+    get_state_response::Phase, GetStateRequest, GetStateResponse,
+    StartRequest, StartResponse, StopRequest, StopResponse,
 };
-use structopt::StructOpt;
 
 pub mod pomodoro {
     tonic::include_proto!("pomodoro");
 }
-use tonic::{transport::Channel, Request, Response};
 
 #[derive(StructOpt)]
 #[structopt(name = "pomoctl", about = "a lightweight pomodoro timer client")]
@@ -24,7 +25,28 @@ pub struct Config {
 
 #[derive(StructOpt)]
 enum Command {
+    Start {
+        #[structopt(short = "p", long = "periods", default_value = "0")]
+        periods: u32,
+        #[structopt(short = "w", long = "work-time", default_value = "25")]
+        work_time: u32,
+        #[structopt(short = "s", long = "short-time", default_value = "4")]
+        short_break_time: u32,
+        #[structopt(short = "l", long = "long-time", default_value = "20")]
+        long_break_time: u32,
+        #[structopt(long = "short-breaks", default_value = "4")]
+        short_breaks_before_long: u32,
+    },
     State,
+    Stop,
+}
+
+struct StartParams {
+    periods: u32,
+    work_time: u32,
+    short_break_time: u32,
+    long_break_time: u32,
+    short_breaks_before_long: u32,
 }
 
 pub async fn run(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
@@ -32,30 +54,85 @@ pub async fn run(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
     let mut client = SessionClient::connect(addr).await?;
 
     match conf.cmd {
+        Command::Start {
+            periods,
+            work_time,
+            short_break_time,
+            long_break_time,
+            short_breaks_before_long,
+        } => {
+            let params = StartParams {
+                periods,
+                work_time,
+                short_break_time,
+                long_break_time,
+                short_breaks_before_long,
+            };
+            start(&mut client, params).await?;
+        }
         Command::State => {
-            let state_response = get_state(conf, &mut client).await?;
+            let state_response = get_state(&mut client).await?;
             print_state(state_response.into_inner());
+        }
+        Command::Stop => {
+            stop(&mut client).await?;
         }
     };
 
     Ok(())
 }
 
+async fn start(
+    client: &mut SessionClient<Channel>,
+    params: StartParams,
+) -> Result<Response<StartResponse>, Box<dyn std::error::Error>> {
+    let request = Request::new(StartRequest {
+        periods: params.periods,
+        work_time: params.work_time,
+        short_break_time: params.short_break_time,
+        long_break_time: params.long_break_time,
+        short_breaks_before_long: params.short_breaks_before_long,
+    });
+    Ok(client.start(request).await?)
+}
+
 async fn get_state(
-    _conf: Config,
     client: &mut SessionClient<Channel>,
 ) -> Result<Response<GetStateResponse>, Box<dyn std::error::Error>> {
-    let request = tonic::Request::new(GetStateRequest {});
+    let request = Request::new(GetStateRequest {});
     Ok(client.get_state(request).await?)
 }
 
+async fn stop(
+    client: &mut SessionClient<Channel>,
+) -> Result<Response<StopResponse>, Box<dyn std::error::Error>> {
+    let request = Request::new(StopRequest {});
+    Ok(client.stop(request).await?)
+}
+
 fn print_state(response: GetStateResponse) {
-    println!("{:#?}", response);
-    match Phase::from_i32(response.phase) {
-        Some(Phase::Stopped) => println!("stopped"),
-        Some(Phase::Working) => println!("working"),
-        Some(Phase::ShortBreak) => println!("short break"),
-        Some(Phase::LongBreak) => println!("long break"),
-        None => {}
+    let (state, remaining) = match Phase::from_i32(response.phase) {
+        Some(Phase::Stopped) => ("🍅".red().bold(), None),
+        Some(Phase::Working) => {
+            ("🍅".yellow().bold(), Some(response.time_remaining))
+        }
+        Some(Phase::ShortBreak) => {
+            ("🍅".blue().bold(), Some(response.time_remaining))
+        }
+        Some(Phase::LongBreak) => {
+            ("🍅".green().bold(), Some(response.time_remaining))
+        }
+        None => ("".into(), None),
+    };
+    let remaining = remaining
+        .map(readable_remaining)
+        .unwrap_or_else(String::new);
+    println!("{}{}", state, remaining);
+}
+
+fn readable_remaining(time: u64) -> String {
+    if time == 0 {
+        return "".into();
     }
+    format!("{:02}:{:02}", time / 60, time % 60)
 }
