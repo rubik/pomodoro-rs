@@ -49,7 +49,7 @@ pub async fn run(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
 }
 
 pub struct PomodoroService {
-    conf: Config,
+    _conf: Config,
     state: Arc<Mutex<PomodoroState>>,
     clock: Arc<Mutex<PomodoroClock>>,
 }
@@ -58,7 +58,7 @@ impl PomodoroService {
     pub fn new(conf: Config) -> Self {
         let state = Arc::new(Mutex::new(PomodoroState::default()));
         Self {
-            conf,
+            _conf: conf,
             state: state.clone(),
             clock: Arc::new(Mutex::new(PomodoroClock::new(state))),
         }

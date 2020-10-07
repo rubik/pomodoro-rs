@@ -50,7 +50,13 @@ struct StartParams {
 
 pub async fn run(conf: Config) -> Result<(), Box<dyn std::error::Error>> {
     let addr = format!("http://{}:{}", conf.host, conf.port);
-    let mut client = SessionClient::connect(addr).await?;
+    let mut client = match SessionClient::connect(addr).await {
+        Ok(c) => c,
+        Err(_) => {
+            println!("connection-error");
+            std::process::exit(1);
+        }
+    };
 
     match conf.cmd {
         Command::Start {
