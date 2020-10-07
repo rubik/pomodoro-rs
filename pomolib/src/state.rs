@@ -197,3 +197,43 @@ impl PomodoroState {
         })
     }
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_transitions() {
+        for short_breaks in 0..10 {
+            let mut state = PomodoroState::default();
+            let mut session = PomodoroSession::default();
+            session.short_breaks_before_long = short_breaks;
+
+            assert_eq!(state.phase, PomodoroPhase::Stopped);
+            assert_eq!(state.current_started_at, None);
+            assert_eq!(state.get_time_remaining(), None);
+            state.start(session);
+            for _ in 0..100 {
+                for _ in 0..short_breaks {
+                    assert_eq!(state.phase, PomodoroPhase::Working);
+                    assert!(state.get_time_remaining().is_some());
+                    state.transition();
+                    assert_eq!(state.phase, PomodoroPhase::ShortBreak);
+                    assert!(state.get_time_remaining().is_some());
+                    state.transition();
+                }
+                assert_eq!(state.phase, PomodoroPhase::Working);
+                assert!(state.get_time_remaining().is_some());
+                state.transition();
+                assert_eq!(state.phase, PomodoroPhase::LongBreak);
+                assert!(state.get_time_remaining().is_some());
+                state.transition();
+            }
+
+            state.stop();
+            assert_eq!(state.phase, PomodoroPhase::Stopped);
+            assert_eq!(state.get_time_remaining(), None);
+        }
+    }
+}
