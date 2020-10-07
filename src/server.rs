@@ -2,18 +2,18 @@ use std::sync::{Arc, Mutex};
 use structopt::StructOpt;
 use tonic::{transport::Server, Request, Response, Status};
 
-use pomolib::clock::PomodoroClock;
-use pomolib::state::{
-    PomodoroPhase, PomodoroSession, PomodoroState, RemainingPeriods,
-    ONE_MINUTE,
-};
-
 use pomodoro::session_server::{Session, SessionServer};
 use pomodoro::{
     get_state_response::{Phase, Remaining},
     GetStateRequest, GetStateResponse, StartRequest, StartResponse,
     StopRequest, StopResponse,
 };
+use pomolib::state::{
+    PomodoroPhase, PomodoroSession, PomodoroState, RemainingPeriods,
+    ONE_MINUTE,
+};
+
+use crate::clock::PomodoroClock;
 
 pub mod pomodoro {
     tonic::include_proto!("pomodoro");
@@ -26,6 +26,8 @@ pub struct Config {
     host: String,
     #[structopt(short = "p", long = "port", default_value = "20799")]
     port: u16,
+    #[structopt(long = "disable-notifications")]
+    disable_notifications: bool,
     #[structopt(
         short = "d",
         long = "db-name",
@@ -57,10 +59,14 @@ pub struct PomodoroService {
 impl PomodoroService {
     pub fn new(conf: Config) -> Self {
         let state = Arc::new(Mutex::new(PomodoroState::default()));
+        let clock = Arc::new(Mutex::new(PomodoroClock::new(
+            state.clone(),
+            conf.disable_notifications,
+        )));
         Self {
             _conf: conf,
-            state: state.clone(),
-            clock: Arc::new(Mutex::new(PomodoroClock::new(state))),
+            state,
+            clock,
         }
     }
 }

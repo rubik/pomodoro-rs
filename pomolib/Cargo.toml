@@ -10,5 +10,3 @@ homepage = "https://github.com/rubik/pomodoro-rs"
 repository = "https://github.com/rubik/pomodoro-rs"
 
 [dependencies]
-tokio = { version = "0.2", default-features = false, features = ["macros", "rt-core", "time"] }
-futures = { version = "0.3", default-features = false, features = ["alloc"] }

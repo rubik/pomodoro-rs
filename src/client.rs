@@ -119,8 +119,12 @@ fn print_state(response: GetStateResponse) {
     let (state, remaining) = match Phase::from_i32(response.phase) {
         Some(Phase::Stopped) => ("stopped", None),
         Some(Phase::Working) => ("working", Some(response.time_remaining)),
-        Some(Phase::ShortBreak) => ("short-break", Some(response.time_remaining)),
-        Some(Phase::LongBreak) => ("long-break", Some(response.time_remaining)),
+        Some(Phase::ShortBreak) => {
+            ("short-break", Some(response.time_remaining))
+        }
+        Some(Phase::LongBreak) => {
+            ("long-break", Some(response.time_remaining))
+        }
         None => ("".into(), None),
     };
     let remaining = remaining

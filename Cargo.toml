@@ -13,15 +13,16 @@ repository = "https://github.com/rubik/pomodoro-rs"
 
 [dependencies]
 pomolib = { path = "pomolib" }
-structopt = "0.3"
-tonic = "0.3"
-prost = "0.6"
-tokio = { version = "0.2", default-features = false, features = ["macros"] }
 futures = { version = "0.3", default-features = false, features = ["alloc"] }
-tower = "0.3"
-pretty_env_logger = "0.4.0"
 log = "0.4.0"
+notify-rust = "4.0"
+pretty_env_logger = "0.4.0"
+prost = "0.6"
 sqlx = { version = "0.4.0-beta.1", default-features = false, features = ["postgres", "macros", "runtime-tokio"] }
+structopt = "0.3"
+tokio = { version = "0.2", default-features = false, features = ["macros", "rt-core", "time"] }
+tonic = "0.3"
+tower = "0.3"
 
 [build-dependencies]
 tonic-build = { version = "0.3", features = ["prost"] }
