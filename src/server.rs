@@ -14,6 +14,7 @@ use pomolib::state::{
 };
 
 use crate::clock::PomodoroClock;
+use crate::notifications::{inotify, Notifier};
 
 pub mod pomodoro {
     tonic::include_proto!("pomodoro");
@@ -58,10 +59,14 @@ pub struct PomodoroService {
 
 impl PomodoroService {
     pub fn new(conf: Config) -> Self {
+        let notifier = match conf.disable_notifications {
+            true => None,
+            false => Some(inotify as Notifier),
+        };
         let state = Arc::new(Mutex::new(PomodoroState::default()));
         let clock = Arc::new(Mutex::new(PomodoroClock::new(
             state.clone(),
-            conf.disable_notifications,
+            Arc::new(notifier),
         )));
         Self {
             _conf: conf,

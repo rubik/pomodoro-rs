@@ -3,56 +3,38 @@ use pomolib::state::{PomodoroState, TransitionResult};
 use std::sync::{Arc, Mutex};
 use tokio::time;
 
-use notify_rust::{Notification, Timeout};
-use pomolib::state::PomodoroPhase;
+use crate::notifications::Notifier;
 
 pub struct PomodoroClock {
     state: Arc<Mutex<PomodoroState>>,
     abort_handle: Option<AbortHandle>,
-    disable_notifications: bool,
+    notifier: Arc<Option<Notifier>>,
 }
 
 impl PomodoroClock {
     pub fn new(
         state: Arc<Mutex<PomodoroState>>,
-        disable_notifications: bool,
+        notifier: Arc<Option<Notifier>>,
     ) -> Self {
         Self {
             state,
-            disable_notifications,
+            notifier,
             abort_handle: None,
         }
     }
 
     pub fn start(&mut self, s: u64) {
-        let state = self.state.clone();
+        let state = Arc::clone(&self.state);
+        let notifier = Arc::clone(&self.notifier);
         let (task, abort_handle) = abortable(async move {
             let mut wait_sec = s;
             loop {
                 time::delay_for(time::Duration::from_secs(wait_sec)).await;
                 let mut state = state.lock().unwrap();
                 let transition = state.transition();
-                //if !self.disable_notifications {
-                    // XXX: It's ugly to put this here, but I tried a lot of
-                    // variants with dependency injection and traits and I wasn't
-                    // able to make it work with tokio::spawn below.
-                    // Traits would also make it easier to test this.
-                    let message = match state.phase {
-                        PomodoroPhase::Stopped => "Session's over! Go rest!",
-                        PomodoroPhase::Working => "Back to work!",
-                        PomodoroPhase::ShortBreak => {
-                            "Short break started, stand up and stretch!"
-                        }
-                        PomodoroPhase::LongBreak => {
-                            "Long break started, have some rest!"
-                        }
-                    };
-                    let _ = Notification::new()
-                        .summary("Pomodoro Timer")
-                        .body(message)
-                        .timeout(Timeout::Milliseconds(4000))
-                        .show();
-                //}
+                if let Some(notify) = &*notifier {
+                    notify(&state.phase);
+                }
                 match transition {
                     TransitionResult::Stopped => break,
                     TransitionResult::NextTransitionIn(s) => {
